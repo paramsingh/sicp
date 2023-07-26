@@ -25,6 +25,19 @@
 
 (define (product? exp) (and (pair? exp) (eq? (car exp) '*)))
 
+(define (exponentation? exp) (and (pair? exp) (eq? (car exp) '**)))
+
+(define (make-exponentation a b)
+  (cond ((=number? b 0) 1)
+        ((=number? a 0) 0)
+        ((=number? a 1) 1)
+        ((and (number? a) (number? b) (expt a b)))
+        (else (list '** a b))))
+
+(define (base exp) (cadr exp))
+
+(define (exponent exp) (caddr exp))
+
 (define (addend e) (cadr e))
 
 (define (augend e) (caddr e))
@@ -44,6 +57,10 @@
                         (derive (multiplicand exp) var))
           (make-product (multiplicand exp)
                         (derive (multiplier exp) var))))
+        ((exponentation? exp)
+         (let ([n (exponent exp)]
+               [a (base exp)])
+           (make-product (make-product n (make-exponentation a (- n 1))) (derive a var))))
         (else
          (error "unknown expression type: DERIV" exp)
          )))
@@ -51,3 +68,4 @@
 (println (derive '(+ x 3) 'x))
 (println (derive '(* x y) 'x))
 (pretty-print (derive '(* (* x y) (+ x 3)) 'x))
+(println (derive '(** x 3) 'x))
