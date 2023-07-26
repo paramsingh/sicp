@@ -31,6 +31,7 @@
   (cond ((=number? b 0) 1)
         ((=number? a 0) 0)
         ((=number? a 1) 1)
+        ((=number? b 1) a)
         ((and (number? a) (number? b) (expt a b)))
         (else (list '** a b))))
 
@@ -75,3 +76,4 @@
 (pretty-print (derive '(* (* x y) (+ x 3)) 'x))
 (println (derive '(** x 3) 'x))
 (pretty-print (derive '(* x y (+ x 3)) 'x))
+(pretty-print (derive '(+ x (** x 2)) 'x))
