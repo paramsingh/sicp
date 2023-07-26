@@ -77,3 +77,8 @@
 (println (derive '(** x 3) 'x))
 (pretty-print (derive '(* x y (+ x 3)) 'x))
 (pretty-print (derive '(+ x (** x 2)) 'x))
+
+;;; 2.58 asks you to support infix with parantheses and only two operands. This is easy because
+;;; racket does the parsing of the expression into nested lists for us.
+
+;;; if the parantheses did not exist, we'd have to convert from infix to prefix and then parse it.
