@@ -21,9 +21,9 @@
         ((and (number? x) (number? y) (* x y)))
         (else (list '* x y))))
 
-(define (sum? exp) (and (pair? exp) (eq? (car exp) '+)))
+(define (sum? exp) (and (list? exp) (eq? (car exp) '+)))
 
-(define (product? exp) (and (pair? exp) (eq? (car exp) '*)))
+(define (product? exp) (and (list? exp) (eq? (car exp) '*)))
 
 (define (exponentation? exp) (and (pair? exp) (eq? (car exp) '**)))
 
@@ -40,11 +40,16 @@
 
 (define (addend e) (cadr e))
 
-(define (augend e) (caddr e))
+(define (augend e)
+  (cond ((= (length e) 3) (caddr e))
+        (else (cons'+ (cddr e)))))
 
 (define (multiplier e) (cadr e))
 
-(define (multiplicand e) (caddr e))
+(define (multiplicand e)
+  (cond ((= (length e) 3) (caddr e))
+        (else (cons '* (cddr e)))))
+
 
 (define (derive exp var)
   (cond ((number? exp) 0)
@@ -69,3 +74,4 @@
 (println (derive '(* x y) 'x))
 (pretty-print (derive '(* (* x y) (+ x 3)) 'x))
 (println (derive '(** x 3) 'x))
+(pretty-print (derive '(* x y (+ x 3)) 'x))
