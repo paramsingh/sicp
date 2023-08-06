@@ -151,11 +151,9 @@
    (cons 'NA 16)
    (cons 'YIP 9)))
 
-(print "here are the pairs")
 (print alphabet-pairs)
 
 (define alphabet-set (make-leaf-set alphabet-pairs))
-(print "set generated")
 (print alphabet-set)
 
 (define rock-tree (generate-huffman-tree alphabet-pairs))
