@@ -36,13 +36,13 @@
 
 (define (adjoin-set x set)
   (cond ((null? set) (list x))
-        ((< (weight x) (weight (car set))) (cons x set))
+        ((> (weight x) (weight (car set))) (cons x set))
         (else (cons (car set) (adjoin-set x (cdr set))))))
 
 (define (make-leaf-set pairs)
   (if (null? pairs)
       '()
-      (adjoin-set (make-leaf (car (car pairs) (cdr (car pairs))))
+      (adjoin-set (make-leaf (car (car pairs)) (cdr (car pairs)))
                   (make-leaf-set (cdr pairs)))))
 
 
@@ -106,3 +106,83 @@
 
 (encode '(A B B A) sample-tree)
 (decode (encode '(A D A B B C A) sample-tree) sample-tree)
+
+;;; Exercise 2.69: The following procedure takes as its argument a list of
+;;; symbol-frequency pairs (where no symbol
+;;; appears in more than one pair) and generates a Huffman
+;;; encoding tree according to the Huffman algorithm.
+
+;;; (define (generate-huffman-tree pairs)
+;;;   (successive-merge (make-leaf-set pairs)))
+
+;;; make-leaf-set is the procedure given above that transforms the list of pairs
+;;; into an ordered set of leaves. successive-merge is the procedure you must write,
+;;; using make-codetree to successively merge the smallest-weight elements
+;;; of the set until there is only one element left, which is the
+;;; desired Huffman tree. (This procedure is slightly tricky, but
+;;; not really complicated. If you find yourself designing a complex procedure,
+;; then you are almost certainly doing something wrong. You can take significant advantage of the fact
+;;; that we are using an ordered set representation.)
+
+(define (successive-merge leaves)
+  (cond ((= (length leaves) 1) (car leaves))
+        (else (make-code-tree
+               (car leaves)
+               (successive-merge (cdr leaves))))))
+
+(define (generate-huffman-tree pairs)
+  (successive-merge (make-leaf-set pairs)))
+
+
+;;; The following eight-symbol alphabet with
+;;; associated relative frequencies was designed to efficiently
+;;; encode the lyrics of 1950s rock songs. (Note that the “symbols” of an “alphabet” need not be individual letters.)
+;;; A 2 GET 2 SHA 3 WAH 1
+;;; BOOM 1 JOB 2 NA 16 YIP 9
+
+(define alphabet-pairs
+  (list
+   (cons 'A 2)
+   (cons 'GET 2)
+   (cons 'SHA 3)
+   (cons 'WAH 1)
+   (cons 'BOOM 1)
+   (cons 'JOB 2)
+   (cons 'NA 16)
+   (cons 'YIP 9)))
+
+(print "here are the pairs")
+(print alphabet-pairs)
+
+(define alphabet-set (make-leaf-set alphabet-pairs))
+(print "set generated")
+(print alphabet-set)
+
+(define rock-tree (generate-huffman-tree alphabet-pairs))
+(println rock-tree)
+
+;;; (print "tree generated")
+
+;;; Use generate-huffman-tree (Exercise 2.69) to generate a
+;;; corresponding Huffman tree, and use encode (Exercise 2.68)
+;;; to encode the following message:
+
+;;; Get a job
+;;; Sha na na na na na na na na
+;;; Get a job
+;;; Sha na na na na na na na na
+;;; Wah yip yip yip yip yip yip yip yip yip
+;;; Sha boom
+
+(define message
+  (list
+   'GET 'A 'JOB
+   'SHA 'NA 'NA 'NA 'NA 'NA 'NA 'NA 'NA
+   'GET 'A 'JOB
+   'SHA 'NA 'NA 'NA 'NA 'NA 'NA 'NA 'NA
+   'WAH 'YIP 'YIP 'YIP 'YIP 'YIP 'YIP 'YIP 'YIP 'YIP
+   'SHA 'BOOM
+   ))
+
+(print (length (encode message rock-tree)))
+(decode (encode message rock-tree) rock-tree)
