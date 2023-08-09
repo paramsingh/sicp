@@ -50,20 +50,30 @@
   (set-value-backward! out _backward)
   out)
 
+;;;  # topological order all of the children in the graph
+;;;         topo = []
+;;;         visited = set()
+;;;         def build_topo(v):
+;;;             if v not in visited:
+;;;                 visited.add(v)
+;;;                 for child in v._prev:
+;;;                     build_topo(child)
+;;;                 topo.append(v)
+;;;         build_topo(self)
 
-(define a (make-value 2 (set) 'a))
-(define b (make-value 3 (set) 'b))
 
-(define c (add-value a b))
-(set-value-label! c 'c)
+(define (topological-sort node)
+  (define topo (list))
+  (define visited (mutable-set))
 
-(define (topological-sort val)
-  (define children (set->list (value-children val)))
-  (if (empty? children)
-      (list)
-      (filter
-       (lambda (x) (not (null? x)))
-       (append children (map topological-sort children)))))
+  (define (helper v)
+    (when (not (set-member? visited v))
+      (set-add! visited v)
+      (for-each helper (set->list (value-children v)))
+      (set! topo (append topo (list v)))))
+
+  (helper node)
+  topo)
 
 (define (backward val)
   (set-value-grad! val 1.0)
@@ -71,6 +81,14 @@
   (define (f val) ((value-backward val)))
   (for-each f order)
   )
+
+;;; Testing
+
+(define a (make-value 2 (set) 'a))
+(define b (make-value 3 (set) 'b))
+
+(define c (add-value a b))
+(set-value-label! c 'c)
 
 (backward c)
 
