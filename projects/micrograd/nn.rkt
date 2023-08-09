@@ -19,8 +19,10 @@
   (for-each (lambda (val) (set-value-grad! val 0.0)) (parameters-neuron n)))
 
 (define (act-neuron n x)
-  (define products (map mul-value (neuron-weights n) x))
-  (foldl add-value (neuron-bias n) products))
+  (define (helper rw rx acc)
+    (cond ((empty? rw) acc)
+          (else (helper (cdr rw) (cdr rx) (add-value acc (mul-value (car rw) (car rx)))))))
+  (helper (neuron-weights n) x (neuron-bias n)))
 
 ;;; layer
 (struct layer (neurons nin nout) #:mutable)
@@ -53,9 +55,6 @@
           (else (append (list (make-layer (car sizes) (cadr sizes))) (get-layers (cdr sizes))))))
   (multi-layer-perceptron (get-layers (append (list nin) nouts)) nin nouts))
 
-(define p (make-perceptron 2 (list 16 16 1)))
-(for-each print-layer (multi-layer-perceptron-layers p))
-
 (define (parameters-perceptron p)
   (foldl append (list) (map parameters-layer (multi-layer-perceptron-layers p))))
 
@@ -63,9 +62,10 @@
   (for-each zero-grad-layer! (multi-layer-perceptron-layers p)))
 
 (define (act-perceptron p x)
+  (define xs (map (lambda (val) (make-value val (set) null)) x))
   (define (apply layers current)
     (cond ((null? layers) current)
           (else (apply (cdr layers) (act-layer (car layers) current)))))
-  (apply (multi-layer-perceptron-layers p) x))
+  (apply (multi-layer-perceptron-layers p) xs))
 
 (provide (all-defined-out))
