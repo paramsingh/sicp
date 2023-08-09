@@ -51,6 +51,19 @@
   (set-value-backward! out _backward)
   out)
 
+(define (pow-value val1 x)
+  (define out (make-value (expt (value-data val1) x) (set val1) null))
+  (define _backward
+    (lambda ()
+      (set-value-grad!
+       val1
+       (+
+        (value-grad val1)
+        (* (* x (expt (value-data val1) (- x 1))) (value-grad out))))))
+
+  (set-value-backward! out _backward)
+  out)
+
 (define (backward val)
   (define (topological-sort node)
     (define topo (list))
@@ -96,3 +109,12 @@
 (print-value a)
 (print-value b)
 (print-value d)
+
+(display "================================")
+(newline)
+(define x (make-value 2 (set) 'x))
+(define y (pow-value x 3))
+(set-value-label! y 'y)
+(backward y)
+(print-value x)
+(print-value y)
