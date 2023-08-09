@@ -2,43 +2,82 @@
 
 (require racket/set)
 
-(define (make-value val children op)
-  (list
-   'val
-   val
-   children
-   0
-   op))
+(struct value (data children grad backward) #:mutable)
 
-(define (data val)
-  (if (number? val)
-      (make-value val (set) null)
-      (cadr val)))
-
-(define (children val)
-  (caddr val))
-
-(define (gradient val) (cadddr val)) ;; goddamn this is ugly
-
-(define (operation val) (cadr (cdddr val))) ;; big puke
+(define (make-value data children)
+  (define _backward (lambda () '()))
+  (value (* 1.0 data) children 0.0 _backward))
 
 (define (print-value val)
-  (let ((value (data val)))
+  (let ((data (value-data val)))
     (display "value: ")
-    (display value)
+    (display data)
+    (display ", grad: ")
+    (display (value-grad val))
     (newline)))
 
 (define (add-value val1 val2)
-  (make-value (+
-               (data val1)
-               (data val2)) (set val1 val2) 'add))
+  (define out (make-value (+
+                           (value-data val1)
+                           (value-data val2)) (set val1 val2)))
+  (define _backward (lambda ()
+                      (set-value-grad!
+                       val1
+                       (+ (value-grad val1) (value-grad out)))
+                      (set-value-grad!
+                       val2
+                       (+ (value-grad val2) (value-grad out)))))
+
+  (set-value-backward! out _backward)
+
+  out)
 
 (define (mul-value val1 val2)
-  (make-value (*
-               (data val1)
-               (data val2)) (set val1 val2) 'mul))
+  (define out (make-value (*
+                           (value-data val1)
+                           (value-data val2)) (set val1 val2)))
+  (define _backward (lambda ()
+                      (set-value-grad!
+                       val1
+                       (+ (value-grad val1) (* (value-grad out) (value-data val2))))
+                      (set-value-grad!
+                       val2
+                       (+ (value-grad val2) (* (value-grad out) (value-data val1))))))
 
-(define a (make-value 2 (set) null))
-(define b (make-value 3 (set) null))
+  (set-value-backward! out _backward)
+  out)
 
-(print-value (mul-value a b))
+
+(define a (make-value 2 (set)))
+(define b (make-value 3 (set)))
+
+(define c (add-value a b))
+
+(define (topological-sort val) (list a b c)) ;; TODO: write topological sort
+
+(define (backward val)
+  (set-value-grad! val 1.0)
+  (define order (reverse (topological-sort val)))
+  (define (f val) ((value-backward val)))
+  (for-each f order)
+  )
+
+(backward c)
+;;; (define d (mul-value a b))
+
+(print-value a)
+(print-value b)
+(print-value c)
+
+(display "===================================")
+(newline)
+
+(set-value-grad! a 0.0)
+(set-value-grad! b 0.0)
+(define d (mul-value a b))
+(set-value-grad! d 1.0)
+((value-backward d))
+
+(print-value a)
+(print-value b)
+(print-value d)
