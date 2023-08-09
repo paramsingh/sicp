@@ -53,17 +53,22 @@
 
 (define c (add-value a b))
 
-(define (topological-sort val) (list a b c)) ;; TODO: write topological sort
+(define (topological-sort val)
+  (define children (set->list (value-children val)))
+  (if (empty? children)
+      (list)
+      (filter
+       (lambda (x) (not (null? x)))
+       (append children (map topological-sort children)))))
 
 (define (backward val)
   (set-value-grad! val 1.0)
-  (define order (reverse (topological-sort val)))
+  (define order (append (list val) (topological-sort val)))
   (define (f val) ((value-backward val)))
   (for-each f order)
   )
 
 (backward c)
-;;; (define d (mul-value a b))
 
 (print-value a)
 (print-value b)
@@ -75,8 +80,7 @@
 (set-value-grad! a 0.0)
 (set-value-grad! b 0.0)
 (define d (mul-value a b))
-(set-value-grad! d 1.0)
-((value-backward d))
+(backward d)
 
 (print-value a)
 (print-value b)
