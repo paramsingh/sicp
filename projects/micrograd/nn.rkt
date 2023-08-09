@@ -58,7 +58,7 @@
 (define (parameters-perceptron p)
   (foldl append (list) (map parameters-layer (multi-layer-perceptron-layers p))))
 
-(define (zero-grad-perceptron p)
+(define (zero-grad-perceptron! p)
   (for-each zero-grad-layer! (multi-layer-perceptron-layers p)))
 
 (define (act-perceptron p x)
