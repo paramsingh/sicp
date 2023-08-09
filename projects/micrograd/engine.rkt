@@ -30,9 +30,7 @@
       (set-value-grad!
        val2
        (+ (value-grad val2) (value-grad out)))))
-
   (set-value-backward! out _backward)
-
   out)
 
 (define (mul-value val1 val2)
@@ -63,6 +61,12 @@
 
   (set-value-backward! out _backward)
   out)
+
+(define (sub-value val1 val2)
+  (add-value val1 (mul-value val2 (make-value -1 (set) null))))
+
+(define (div-value val1 val2)
+  (mul-value val1 (pow-value val2 -1)))
 
 (define (backward val)
   (define (topological-sort node)
