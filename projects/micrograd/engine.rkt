@@ -68,6 +68,16 @@
 (define (div-value val1 val2)
   (mul-value val1 (pow-value val2 -1)))
 
+(define (relu-value val)
+  (define out (make-value (if (< (value-data val) 0) 0 (value-data val))))
+  (define _backward
+    (lambda ()
+      (set-value-grad! val
+                       (+ (value-data val)
+                          (* (if (> (value-data out) 0) 1 0) (value-grad out))))))
+  (set-value-backward! out _backward)
+  out)
+
 (define (backward val)
   (define (topological-sort node)
     (define topo (list))
