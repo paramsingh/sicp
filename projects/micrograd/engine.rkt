@@ -2,24 +2,27 @@
 
 (require racket/set)
 
-(struct value (data children grad backward) #:mutable)
+(struct value (data children grad backward label) #:mutable)
 
-(define (make-value data children)
+(define (make-value data children label)
   (define _backward (lambda () '()))
-  (value (* 1.0 data) children 0.0 _backward))
+  (value (* 1.0 data) children 0.0 _backward label))
 
 (define (print-value val)
   (let ((data (value-data val)))
-    (display "value: ")
+    (display "label: ")
+    (display (value-label val))
+    (display ", value: ")
     (display data)
     (display ", grad: ")
     (display (value-grad val))
     (newline)))
 
+
 (define (add-value val1 val2)
   (define out (make-value (+
                            (value-data val1)
-                           (value-data val2)) (set val1 val2)))
+                           (value-data val2)) (set val1 val2) null))
   (define _backward (lambda ()
                       (set-value-grad!
                        val1
@@ -35,7 +38,7 @@
 (define (mul-value val1 val2)
   (define out (make-value (*
                            (value-data val1)
-                           (value-data val2)) (set val1 val2)))
+                           (value-data val2)) (set val1 val2) null))
   (define _backward (lambda ()
                       (set-value-grad!
                        val1
@@ -48,10 +51,11 @@
   out)
 
 
-(define a (make-value 2 (set)))
-(define b (make-value 3 (set)))
+(define a (make-value 2 (set) 'a))
+(define b (make-value 3 (set) 'b))
 
 (define c (add-value a b))
+(set-value-label! c 'c)
 
 (define (topological-sort val)
   (define children (set->list (value-children val)))
@@ -80,6 +84,7 @@
 (set-value-grad! a 0.0)
 (set-value-grad! b 0.0)
 (define d (mul-value a b))
+(set-value-label! d 'd)
 (backward d)
 
 (print-value a)
