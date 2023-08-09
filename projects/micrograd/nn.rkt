@@ -32,7 +32,7 @@
   (foldl append (list) (map parameters-neuron (layer-neurons l))))
 
 (define (zero-grad-layer! l)
-  (for-each (lambda (val) (set-value-grad! val 0.0)) (parameters-layer l)))
+  (for-each zero-grad-neuron! (layer-neurons l)))
 
 (define (act-layer l x)
   (map (lambda (n) (act-neuron n x)) (layer-neurons l)))
@@ -56,7 +56,16 @@
 (define p (make-perceptron 2 (list 16 16 1)))
 (for-each print-layer (multi-layer-perceptron-layers p))
 
-;;; TODO: implement parameters, zero-grad and act for the perceptron
-;;; TODO: test by building a real network.
+(define (parameters-perceptron p)
+  (foldl append (list) (map parameters-layer (multi-layer-perceptron-layers p))))
+
+(define (zero-grad-perceptron p)
+  (for-each zero-grad-layer! (multi-layer-perceptron-layers p)))
+
+(define (act-perceptron p x)
+  (define (apply layers current)
+    (cond ((null? layers) current)
+          (else (apply (cdr layers) (act-layer (car layers) current)))))
+  (apply (multi-layer-perceptron-layers p) x))
 
 (provide (all-defined-out))
