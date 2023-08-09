@@ -22,13 +22,14 @@
   (define out (make-value (+
                            (value-data val1)
                            (value-data val2)) (set val1 val2) null))
-  (define _backward (lambda ()
-                      (set-value-grad!
-                       val1
-                       (+ (value-grad val1) (value-grad out)))
-                      (set-value-grad!
-                       val2
-                       (+ (value-grad val2) (value-grad out)))))
+  (define _backward
+    (lambda ()
+      (set-value-grad!
+       val1
+       (+ (value-grad val1) (value-grad out)))
+      (set-value-grad!
+       val2
+       (+ (value-grad val2) (value-grad out)))))
 
   (set-value-backward! out _backward)
 
@@ -38,13 +39,14 @@
   (define out (make-value (*
                            (value-data val1)
                            (value-data val2)) (set val1 val2) null))
-  (define _backward (lambda ()
-                      (set-value-grad!
-                       val1
-                       (+ (value-grad val1) (* (value-grad out) (value-data val2))))
-                      (set-value-grad!
-                       val2
-                       (+ (value-grad val2) (* (value-grad out) (value-data val1))))))
+  (define _backward
+    (lambda ()
+      (set-value-grad!
+       val1
+       (+ (value-grad val1) (* (value-grad out) (value-data val2))))
+      (set-value-grad!
+       val2
+       (+ (value-grad val2) (* (value-grad out) (value-data val1))))))
 
   (set-value-backward! out _backward)
   out)
@@ -64,7 +66,7 @@
     topo)
 
   (set-value-grad! val 1.0)
-  (define order (append (list val) (topological-sort val)))
+  (define order (reverse (topological-sort val)))
   (define (f val) ((value-backward val)))
   (for-each f order)
   )
