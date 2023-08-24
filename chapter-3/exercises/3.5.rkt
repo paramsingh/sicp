@@ -55,7 +55,8 @@
 
 (define radius 10)
 (define (circle-predicate x y) (<= (+ (* x x) (* y y)) (* radius radius)))
-(define area (estimate-integral circle-predicate (- radius) (- radius) radius radius))
+(define area
+  (estimate-integral circle-predicate (- radius) (- radius) radius radius))
 
 (define pi (/ area (* radius radius)))
 
