@@ -12,7 +12,7 @@
       (if (or (not (pair? l)) (memq l s))
           0
           (begin
-            (set! s (cons s l))
+            (set! s (cons l s))
             (+
              (helper (car l))
              (helper (cdr l))
