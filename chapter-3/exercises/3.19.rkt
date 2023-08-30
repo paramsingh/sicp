@@ -1,6 +1,4 @@
 #lang sicp
-
-
 ;;; Exercise 3.19: Redo Exercise 3.18 using an algorithm that
 ;;; takes only a constant amount of space. (This requires a very
 ;;; clever idea.)
@@ -19,7 +17,11 @@
     (cond ((eq? slow fast) true)
           ((or (null? fast) (null? (cdr fast))) false)
           (else (helper (cdr slow) (cdr (cdr fast))))))
-  (helper (cdr lst) (cdr (cdr lst))))
+  (if (or (null? lst) (null? (cdr lst)))
+      false
+      (helper (cdr lst) (cdr (cdr lst)))))
 
 (cycle? z)
-(cycle? (list 1 2 3 4))
+(cycle? (list))
+(cycle? (list 1))
+(cycle? (list 1 1 2 3 4))
