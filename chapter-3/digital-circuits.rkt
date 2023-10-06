@@ -1,6 +1,29 @@
 #lang sicp
 
-(define (make-wire) '())
+
+(define (make-wire)
+  ((let ((signal-value 0)
+         (action-procedures '()))
+     (define (set-signal! new-value)
+       (if (not (= signal-value new-value))
+           (begin (set! signal-value new-value)
+                  (call-each action-procedures))
+           'done))
+     (define (add-action-procedure procedure)
+       (begin (set! action-procedures (cons procedure action-procedures)))
+       (procedure))
+     (define (dispatch m)
+       (cond ((eq? m 'get-signal) signal-value)
+             ((eq? m 'set-signal!) set-signal!)
+             ((eq? m 'add-action!) add-action-procedure)
+             (else (error "Unknown operation: WIRE")))))
+   dispatch))
+
+(define (get-signal wire) (wire 'get-signal))
+(define (set-signal! wire new-value)
+  ((wire 'set-signal!) new-value))
+(define (add-action! wire action-procedure)
+  ((wire 'add-action!) action-procedure))
 
 (define a (make-wire))
 (define b (make-wire))
@@ -49,6 +72,7 @@
   (define (and-gate-function)
     (let ((o (logical-and (get-signal input1) (get-signal input2))))
       (after-delay and-gate-delay ((lambda () (set-signal! output o))))))
-  (add-action! input1 and-gate-function)
-  (add-action! input2 and-gate-function)
-  'ok)
+  (begin
+    (add-action! input1 and-gate-function)
+    (add-action! input2 and-gate-function)
+    'ok))
