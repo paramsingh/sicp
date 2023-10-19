@@ -13,15 +13,20 @@
 ;;; underlying Lisp. Also write a version of list-of-values
 ;;; that evaluates operands from right to left
 
+(define (no-operands? exps)
+  (null? exps))
+
+(define (first-operand exps) (car exps))
+(define (rest-operands exps) (cdr exps))
 
 (define (list-of-values exps env)
   (if (no-operands? exps)
       '()
-      (let (left (eval (first-operand exps) env))
+      (let ((left (eval (first-operand exps) env)))
         (cons left (list-of-values (rest-operands exps) env)))))
 
 (define (list-of-values-right exps env)
   (if (no-operands? exps)
       '()
-      (let (right (list-of-values (rest-operands exps) env))
+      (let ((right (list-of-values-right (rest-operands exps) env)))
         (cons (eval (first-operand exps) env) right))))
