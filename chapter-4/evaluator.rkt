@@ -101,7 +101,65 @@
            (sequence->exp (actions-clause (car clauses)))
            (expand-clauses (cdr clauses))))))
 
-(define (lookup-variable-value exp env) '())
+;;;;;;;;;; Environments
+(define (lookup-variable-value var env)
+  (define (scan-env env)
+    (define (scan vars vals)
+      (cond ((null? vars) (scan-env (enclosing-environment env)))
+            ((eq? (car vars) var)) (car vals)
+            (else (scan (cdr vars) (cdr vals)))))
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable" var)
+        (scan
+         (frame-variables (first-frame env))
+         (frame-values (first-frame env)))))
+  (scan-env env))
+
+(define (set-variable-value! var val env)
+  (define (scan-env env)
+    (define (scan vars vals)
+      (cond ((null? vars) (scan-env (enclosing-environment env)))
+            ((eq? (car vars) var)) (set-car! vals val)
+            (else (scan (cdr vars) (cdr vals)))))
+    (if (eq? env the-empty-environment)
+        (error "Unbound variable: set!" var)
+        (scan
+         (frame-variables (first-frame env))
+         (frame-values (first-frame env)))))
+  (scan-env env))
+
+(define (define-variable! var val env)
+  (let ((frame (first-frame env)))
+    (define (scan vars vals)
+      (cond ((null? vars)
+             (add-binding-to-frame! var val frame))
+            ((eq? var (car vars)) (set-car! vals val))
+            (else (scan (cdr vars) (cdr vals)))))
+    (scan (frame-variables frame) (frame-values frame))))
+
+(define (enclosing-environment env) (cdr env))
+
+(define (first-frame env) (car env))
+
+(define the-empty-environment '())
+
+(define (make-frame variables values)
+  (cons variables values))
+
+(define (frame-variables frame) (car frame))
+
+(define (frame-values frame) (cdr frame))
+
+(define (add-binding-to-frame! var val frame)
+  (set-car! frame (cons var (car frame)))
+  (set-cdr! frame (cons val (cdr frame))))
+
+(define (extend-environment vars vals base-env)
+  (if (= (length vars) (length vals))
+      (cons (make-frame vars vals) base-env)
+      (if (> (length vars) (length vals))
+          (error "too many arguments supplied")
+          (error "too few arguments supplied"))))
 
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
@@ -121,14 +179,17 @@
                 (list-of-values (operands exp) env)))
         (else (error "Unknown expression type: EVAL" exp))))
 
-(define (make-procedure) '())
-(define (primitive-procedure? proc) '())
-(define (apply-primitive-procedure proc args) '())
-(define (compound-procedure? proc) '())
-(define (procedure-body proc) '())
-(define (procedure-parameters proc) '())
-(define (procedure-environment proc) '())
-(define (extend-environment a b c) '())
+(define (make-procedure parameters body env)
+  (list 'procedure parameters body env))
+
+(define (primitive-procedure? proc) '()) ;;; TODO
+(define (apply-primitive-procedure proc args) '()) ;;; TODO
+
+(define (compound-procedure? proc) (tagged-list? proc 'procedure))
+(define (procedure-body proc) (caddr proc))
+(define (procedure-parameters proc) (cadr proc))
+(define (procedure-environment proc) (cadddr proc))
+
 
 (define (apply procedure args)
   (cond ((primitive-procedure? procedure)
@@ -149,7 +210,8 @@
       (cons (eval (first-operand exps) env)
             (list-of-values (rest-operands exps) env))))
 
-(define (true? t) (eq? t true))
+(define (true? t) (not (eq? t false)))
+(define (false? x) (eq? x false))
 
 (define (eval-if exp env)
   (if (true? (eval (if-predicate exp) env))
@@ -161,14 +223,12 @@
         (else (eval (first-exp exps) env)
               (eval-sequence (rest-exps exps) env))))
 
-(define (set-variable-value! a b c) '())
 (define (eval-assignment exp env)
   (set-variable-value! (assignment-variable exp)
                        (eval (assignment-value exp) env)
                        env)
   'ok)
 
-(define (define-variable! a b c) '())
 (define (eval-definition exp env)
   (define-variable!
     (definition-variable exp)
