@@ -38,7 +38,7 @@
     (define (scan vars vals)
       (cond ((null? vars)
              (add-binding-to-frame! var val frame))
-            ((eq? var (car vars)) (set-car! vals val))
+            ((eq? var (car vars)) (set-in-frame! var val frame))
             (else (scan (cdr vars) (cdr vals)))))
     (scan (frame-variables frame) (frame-values frame))))
 
@@ -104,3 +104,7 @@
 (display extended-env)
 (newline)
 (lookup-variable-value 'c extended-env)
+(define-variable! 'd 50 extended-env)
+(display extended-env)
+(newline)
+(lookup-variable-value 'd extended-env)
