@@ -88,7 +88,7 @@
 (define (predicate-clause clause) (car clause))
 (define (actions-clause clause) (cdr clause))
 (define (cond->if exp) (expand-clauses (cond-clauses exp)))
-(define (cond-else-clause? clause) (eq? predicate-clause 'else))
+(define (cond-else-clause? clause) (eq? (predicate-clause clause) 'else))
 (define (expand-clauses clauses)
   (if (null? clauses)
       'false
@@ -101,12 +101,13 @@
            (sequence->exp (actions-clause (car clauses)))
            (expand-clauses (cdr clauses))))))
 
+
 ;;;;;;;;;; Environments
 (define (lookup-variable-value var env)
   (define (scan-env env)
     (define (scan vars vals)
       (cond ((null? vars) (scan-env (enclosing-environment env)))
-            ((eq? (car vars) var)) (car vals)
+            ((eq? (car vars) var) (car vals))
             (else (scan (cdr vars) (cdr vals)))))
     (if (eq? env the-empty-environment)
         (error "Unbound variable" var)
@@ -119,7 +120,7 @@
   (define (scan-env env)
     (define (scan vars vals)
       (cond ((null? vars) (scan-env (enclosing-environment env)))
-            ((eq? (car vars) var)) (set-car! vals val)
+            ((eq? (car vars) var) (set-car! vals val))
             (else (scan (cdr vars) (cdr vals)))))
     (if (eq? env the-empty-environment)
         (error "Unbound variable: set!" var)
@@ -163,7 +164,8 @@
 
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
-        ((variable? exp) (lookup-variable-value exp env))
+        ((variable? exp)
+         (lookup-variable-value exp env))
         ((quoted? exp) (text-of-quotation exp))
         ((assignment? exp) (eval-assignment exp env))
         ((definition? exp) (eval-definition exp env))
@@ -175,15 +177,12 @@
          (eval-sequence (begin-actions exp) env))
         ((cond? exp) (eval (cond->if exp) env))
         ((application? exp)
-         (apply (eval (operator exp) env)
-                (list-of-values (operands exp) env)))
+         (meta-apply (eval (operator exp) env)
+                     (list-of-values (operands exp) env)))
         (else (error "Unknown expression type: EVAL" exp))))
 
 (define (make-procedure parameters body env)
   (list 'procedure parameters body env))
-
-(define (primitive-procedure? proc) '()) ;;; TODO
-(define (apply-primitive-procedure proc args) '()) ;;; TODO
 
 (define (compound-procedure? proc) (tagged-list? proc 'procedure))
 (define (procedure-body proc) (caddr proc))
@@ -191,7 +190,7 @@
 (define (procedure-environment proc) (cadddr proc))
 
 
-(define (apply procedure args)
+(define (meta-apply procedure args)
   (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure args))
         ((compound-procedure? procedure)
@@ -235,3 +234,70 @@
     (eval (definition-value exp) env)
     env)
   'ok)
+
+(define (setup-environment)
+  (let ((initial-env
+         (extend-environment (primitive-procedure-names)
+                             (primitive-procedure-objects)
+                             the-empty-environment)))
+    (define-variable! 'true true initial-env)
+    (define-variable! 'false false initial-env)
+    initial-env))
+
+
+(define primitive-procedures
+  (list (list 'car car)
+        (list 'cdr cdr)
+        (list 'cons cons)
+        (list 'null? null?)
+        (list 'eq? eq?)
+        (list '+ +)
+        (list '* *)
+        (list 'list list)))
+
+(define (primitive-procedure-names)
+  (map car primitive-procedures))
+
+(define (primitive-procedure-objects)
+  (map (lambda (proc) (list 'primitive (cadr proc)))
+       primitive-procedures))
+
+(define apply-in-underlying-scheme apply)
+(define (primitive-procedure? proc)
+  (tagged-list? proc 'primitive))
+(define (primitive-implementation proc)
+  (cadr proc))
+
+(define (apply-primitive-procedure proc args)
+  (apply-in-underlying-scheme (primitive-implementation proc) args))
+
+(define input-prompt ";;; input: ")
+(define output-prompt ";;; value: ")
+(define (prompt-for-input prompt)
+  (newline)
+  (newline)
+  (display prompt)
+  (newline))
+(define (announce-output string)
+  (newline)
+  (display string)
+  (newline))
+
+(define (user-print object)
+  (if (compound-procedure? object)
+      (display (list 'compound-procedure
+                     (procedure-parameters object)
+                     (procedure-body object)
+                     '<procedure-env>))
+      (display object)))
+
+(define (driver-loop)
+  (prompt-for-input input-prompt)
+  (let ((input (read)))
+    (let ((output (eval input the-global-environment)))
+      (announce-output output-prompt)
+      (user-print output)))
+  (driver-loop))
+
+(define the-global-environment (setup-environment))
+(driver-loop)
