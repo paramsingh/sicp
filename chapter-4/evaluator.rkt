@@ -17,6 +17,7 @@
 
 (define (quoted? exp) (tagged-list? exp 'quote))
 (define (text-of-quotation exp) (cadr exp))
+(define (make-quote text) (list 'quote text))
 
 ;;; assignments look like (set! <var> <value>)
 (define (assignment? exp) (tagged-list? exp 'set!))
@@ -253,6 +254,8 @@
         (list 'eq? eq?)
         (list '+ +)
         (list '* *)
+        (list '= =)
+        (list '- -)
         (list 'list list)))
 
 (define (primitive-procedure-names)
