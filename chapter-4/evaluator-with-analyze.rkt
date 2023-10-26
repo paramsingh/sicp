@@ -259,6 +259,28 @@
          (error "Unknown procedure type: EXECUTE-APPLICATION"
                 proc))))
 
+(define (let-param-pairs exp) (cadr exp))
+(define (let-body exp) (cddr exp))
+
+(define (let->combination exp)
+  (define (parameter-names param-pairs)
+    (cond ((null? param-pairs) '())
+          (else (cons (caar param-pairs) (parameter-names (cdr param-pairs))))))
+  (define (parameter-values param-pairs)
+    (cond ((null? param-pairs) '())
+          (else (cons (cadar param-pairs) (parameter-values (cdr param-pairs))))))
+  (cons
+   (make-lambda
+    (parameter-names (let-param-pairs exp))
+    (list (sequence->exp (let-body exp))))
+   (parameter-values (let-param-pairs exp))))
+
+(define (analyze-let exp)
+  (let ((combproc (analyze (let->combination exp))))
+    combproc))
+
+(define (let? exp) (tagged-list? exp 'let))
+
 (define (analyze exp)
   (cond ((self-evaluating? exp) (analyze-self-evaluating exp))
         ((variable? exp)
@@ -271,6 +293,7 @@
         ((begin? exp)
          (analyze-sequence (begin-actions exp)))
         ((cond? exp) (analyze (cond->if exp)))
+        ((let? exp) (analyze-let exp))
         ((application? exp)
          (analyze-application exp))
         (else (error "Unknown expression type: ANALYZE" exp))))
