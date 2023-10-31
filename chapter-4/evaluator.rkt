@@ -163,6 +163,14 @@
           (error "too many arguments supplied")
           (error "too few arguments supplied"))))
 
+(define (make-procedure parameters body env)
+  (list 'procedure parameters body env))
+
+(define (compound-procedure? proc) (tagged-list? proc 'procedure))
+(define (procedure-body proc) (caddr proc))
+(define (procedure-parameters proc) (cadr proc))
+(define (procedure-environment proc) (cadddr proc))
+
 (define (eval exp env)
   (cond ((self-evaluating? exp) exp)
         ((variable? exp)
@@ -181,15 +189,6 @@
          (meta-apply (eval (operator exp) env)
                      (list-of-values (operands exp) env)))
         (else (error "Unknown expression type: EVAL" exp))))
-
-(define (make-procedure parameters body env)
-  (list 'procedure parameters body env))
-
-(define (compound-procedure? proc) (tagged-list? proc 'procedure))
-(define (procedure-body proc) (caddr proc))
-(define (procedure-parameters proc) (cadr proc))
-(define (procedure-environment proc) (cadddr proc))
-
 
 (define (meta-apply procedure args)
   (cond ((primitive-procedure? procedure)
