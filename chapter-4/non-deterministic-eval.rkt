@@ -330,6 +330,20 @@
 (define (amb? exp) (tagged-list? exp 'amb))
 (define (amb-choices exp) (cdr exp))
 
+(define (analyze-amb exp)
+  (let ((choice-procs (map analyze (amb-choices exp))))
+    (lambda (env succeed fail)
+      (define (try-again choices)
+        (if (null? choices)
+            (fail)
+            ((car choices)
+             env
+             succeed
+             (lambda ()
+               (try-again (cdr choices))))))
+      (try-again choice-procs))))
+
+
 (define (analyze exp)
   (cond ((self-evaluating? exp) (analyze-self-evaluating exp))
         ((variable? exp)
@@ -343,6 +357,7 @@
          (analyze-sequence (begin-actions exp)))
         ((cond? exp) (analyze (cond->if exp)))
         ((let? exp) (analyze-let exp))
+        ((amb? exp) (analyze-amb exp))
         ((application? exp)
          (analyze-application exp))
         (else (error "Unknown expression type: ANALYZE" exp))))
