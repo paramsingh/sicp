@@ -362,20 +362,21 @@
          (succeed 'ok fail2))
        fail))))
 
-;;; (define (analyze-assignment exp)
-;;; (let ((var (assignment-variable exp))
-;;;       (valproc (analyze (assignment-value exp))))
-;;;   (lambda (env succeed fail)
-;;;     (valproc
-;;;      env
-;;;      (lambda (value fail2)
-;;;        (let ((old-value (lookup-variable-value var env)))
-;;;          (set-variable-value! var value)
-;;;          (succeed 'ok
-;;;                   (lambda ()
-;;;                     (set-variable-value! var old-value)
-;;;                     (fail2)))))
-;;;      fail))))
+(define (if-fail? exp) (tagged-list? exp 'if-fail))
+(define (if-fail-success-result exp) (cadr exp))
+(define (if-fail-failure-result exp) (caddr exp))
+
+(define (analyze-if-fail exp)
+  (let ((success-proc (analyze (if-fail-success-result exp)))
+        (failure-proc (analyze (if-fail-failure-result exp))))
+    (lambda (env succeed fail)
+      (success-proc
+       env
+       succeed
+       (lambda ()
+         (failure-proc env
+                       succeed
+                       fail))))))
 
 (define (analyze exp)
   (cond ((self-evaluating? exp) (analyze-self-evaluating exp))
@@ -386,6 +387,7 @@
         ((permanent-set? exp) (analyze-permanent-assignment exp))
         ((definition? exp) (analyze-definition exp))
         ((if? exp) (analyze-if exp))
+        ((if-fail? exp) (analyze-if-fail exp))
         ((lambda? exp) (analyze-lambda exp))
         ((begin? exp)
          (analyze-sequence (begin-actions exp)))
