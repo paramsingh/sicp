@@ -79,7 +79,7 @@
        env
        (lambda (value fail2)
          (let ((old-value (lookup-variable-value var env)))
-           (set-variable-value! var value)
+           (set-variable-value! var value env)
            (succeed 'ok
                     (lambda ()
                       (set-variable-value! var old-value)
@@ -350,12 +350,40 @@
       (try-again choice-procs))))
 
 
+(define (permanent-set? exp) (tagged-list? exp 'permanent-set!))
+(define (analyze-permanent-assignment exp)
+  (let ((var (assignment-variable exp))
+        (valproc (analyze (assignment-value exp))))
+    (lambda (env succeed fail)
+      (valproc
+       env
+       (lambda (value fail2)
+         (set-variable-value! var value env)
+         (succeed 'ok fail2))
+       fail))))
+
+;;; (define (analyze-assignment exp)
+;;; (let ((var (assignment-variable exp))
+;;;       (valproc (analyze (assignment-value exp))))
+;;;   (lambda (env succeed fail)
+;;;     (valproc
+;;;      env
+;;;      (lambda (value fail2)
+;;;        (let ((old-value (lookup-variable-value var env)))
+;;;          (set-variable-value! var value)
+;;;          (succeed 'ok
+;;;                   (lambda ()
+;;;                     (set-variable-value! var old-value)
+;;;                     (fail2)))))
+;;;      fail))))
+
 (define (analyze exp)
   (cond ((self-evaluating? exp) (analyze-self-evaluating exp))
         ((variable? exp)
          (analyze-variable exp))
         ((quoted? exp) (analyze-quote exp))
         ((assignment? exp) (analyze-assignment exp))
+        ((permanent-set? exp) (analyze-permanent-assignment exp))
         ((definition? exp) (analyze-definition exp))
         ((if? exp) (analyze-if exp))
         ((lambda? exp) (analyze-lambda exp))
@@ -425,3 +453,9 @@
 
 (define the-global-environment (setup-environment))
 (driver-loop)
+
+;;; (let ((x (an-element-of '(a b c)))
+;;;       (y (an-element-of '(a b c))))
+;;;   (permanent-set! count (+ count 1))
+;;;   (require (not (eq? x y)))
+;;;   (list x y count))
