@@ -7,13 +7,14 @@
         (else false)))
 
 (define (analyze-self-evaluating exp)
-  (lambda (env) exp))
+  (lambda (env succeed fail) (succeed exp fail)))
 
 (define (variable? exp)
   (symbol? exp))
 
 (define (analyze-variable exp)
-  (lambda (env) (lookup-variable-value exp env)))
+  (lambda (env succeed fail)
+    (succeed (lookup-variable-value exp env) fail)))
 
 (define (enclosing-environment env) (cdr env))
 (define the-empty-environment '())
@@ -35,7 +36,7 @@
          (frame-values (first-frame env)))))
   (scan-env env))
 
-(define (eval exp env) ((analyze exp) env))
+(define (ambeval exp env succeed fail) ((analyze exp) env succeed fail))
 
 (define (tagged-list? exp tag)
   (if (pair? exp)
@@ -48,7 +49,8 @@
 
 (define (analyze-quote exp)
   (let ((text (text-of-quotation exp)))
-    (lambda (env) text)))
+    (lambda (env succeed fail)
+      (succeed text fail))))
 
 (define (assignment? exp) (tagged-list? exp 'set!))
 (define (assignment-variable exp) (cadr exp))
@@ -69,10 +71,18 @@
 
 (define (analyze-assignment exp)
   (let ((var (assignment-variable exp))
-        (val (analyze (assignment-value exp))))
-    (lambda (env)
-      (set-variable-value! var (eval val env))
-      'ok)))
+        (valproc (analyze (assignment-value exp))))
+    (lambda (env succeed fail)
+      (valproc
+       env
+       (lambda (value fail2)
+         (let ((old-value (lookup-variable-value var env)))
+           (set-variable-value! var value)
+           (succeed 'ok
+                    (lambda ()
+                      (set-variable-value! var old-value)
+                      (fail2)))))
+       fail))))
 
 (define (define-variable! var val env)
   (let ((frame (first-frame env)))
@@ -104,9 +114,13 @@
 (define (analyze-definition exp)
   (let ((var (definition-variable exp))
         (valproc (analyze (definition-value exp))))
-    (lambda (env)
-      (define-variable! var (valproc env) env)
-      'ok)))
+    (lambda (env succeed fail)
+      (valproc
+       env
+       (lambda (value fail2)
+         (define-variable! var value env)
+         (succeed 'ok fail2))
+       fail))))
 
 (define (if? exp) (tagged-list? exp 'if))
 (define (if-predicate exp) (cadr exp))
@@ -124,10 +138,14 @@
   (let ((predicate-proc (analyze (if-predicate exp)))
         (consequent-proc (analyze (if-consequent exp)))
         (alternative-proc (analyze (if-alternative exp))))
-    (lambda (env)
-      (if (true? (predicate-proc env))
-          (consequent-proc env)
-          (alternative-proc env)))))
+    (lambda (env succeed fail)
+      (predicate-proc
+       env
+       (lambda (predicate-val fail2)
+         (if (true? predicate-val)
+             (consequent-proc env succeed fail2)
+             (alternative-proc env succeed fail2)))
+       fail))))
 
 (define (lambda? exp) (tagged-list? exp 'lambda))
 (define (lambda-parameters exp) (cadr exp))
@@ -138,7 +156,8 @@
 (define (analyze-lambda exp)
   (let ((params (lambda-parameters exp))
         (body (analyze-sequence (lambda-body exp))))
-    (lambda (env) (make-procedure params body env))))
+    (lambda (env succeed fail)
+      (succeed (make-procedure params body env) fail))))
 
 (define (begin? exp) (tagged-list? exp 'begin))
 (define (begin-actions exp) (cdr exp))
@@ -155,7 +174,12 @@
 (define (analyze-sequence exps)
 
   (define (sequentially first second)
-    (lambda (env) (first env) (second env)))
+    (lambda (env succeed fail)
+      (first
+       env
+       (lambda (first-val fail2)
+         (second env succeed fail2))
+       fail)))
 
   (define (loop first-proc rest-procs)
     (if (null? rest-procs)
@@ -196,11 +220,31 @@
 (define (analyze-application exp)
   (let ((fproc (analyze (operator exp)))
         (aprocs (map analyze (operands exp))))
-    (lambda (env)
-      (execute-application
-       (fproc env)
-       (map (lambda (aproc) (aproc env))
-            aprocs)))))
+    (lambda (env succeed fail)
+      (fproc
+       env
+       (lambda (proc fail2)
+         (get-args
+          aprocs
+          env
+          (lambda (args fail3)
+            (execute-application proc args succeed fail3))
+          fail2))
+       fail))))
+
+(define (get-args aprocs env succeed fail)
+  (if (null? aprocs)
+      (succeed '() fail)
+      ((car aprocs)
+       env
+       (lambda (first-arg fail2)
+         (get-args
+          (cdr aprocs)
+          env
+          (lambda (vals fail3)
+            (succeed (cons first-arg vals) fail3))
+          fail2))
+       fail)))
 
 (define primitive-procedures
   (list (list 'car car)
@@ -246,15 +290,17 @@
           (error "too many arguments supplied")
           (error "too few arguments supplied"))))
 
-(define (execute-application proc args)
+(define (execute-application proc args succeed fail)
   (cond ((primitive-procedure? proc)
-         (apply-primitive-procedure proc args))
+         (succeed (apply-primitive-procedure proc args) fail))
         ((compound-procedure? proc)
          ((procedure-body proc)
           (extend-environment
            (procedure-parameters proc)
            args
-           (procedure-environment proc))))
+           (procedure-environment proc))
+          succeed
+          fail))
         (else
          (error "Unknown procedure type: EXECUTE-APPLICATION"
                 proc))))
@@ -280,6 +326,9 @@
     combproc))
 
 (define (let? exp) (tagged-list? exp 'let))
+
+(define (amb? exp) (tagged-list? exp 'amb))
+(define (amb-choices exp) (cdr exp))
 
 (define (analyze exp)
   (cond ((self-evaluating? exp) (analyze-self-evaluating exp))
