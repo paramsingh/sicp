@@ -346,6 +346,13 @@
 (define the-global-environment (setup-environment))
 (driver-loop)
 
+(define (prime-sum-pair list1 list2)
+  (let ((a (an-element-of list1))
+        (b (an-element-of list2)))
+    (require (prime? (+ a b)))
+    (list a b)))
+
+
 ;;; THESE ARE DEFINITIONS TO PUT IN TO TEST THE LAZY
 ;;; EVALUATION:
 ;;; TODO: Put these in the environment by default
