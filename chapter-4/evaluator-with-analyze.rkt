@@ -2,9 +2,11 @@
 
 ;;; only self evaluating things are numbers and strings
 (define (self-evaluating? exp)
-  (cond ((number? exp) true)
-        ((string? exp) true)
-        (else false)))
+  (cond
+    ((null? exp) true)
+    ((number? exp) true)
+    ((string? exp) true)
+    (else false)))
 
 (define (analyze-self-evaluating exp)
   (lambda (env) exp))
@@ -113,7 +115,8 @@
 (define (if-consequent exp) (caddr exp))
 (define (if-alternative exp)
   (if (not (null? (cdddr exp)))
-      (cadddr exp)))
+      (cadddr exp)
+      nil))
 
 (define (make-if predicate consequent alternative)
   (list 'if predicate consequent alternative))

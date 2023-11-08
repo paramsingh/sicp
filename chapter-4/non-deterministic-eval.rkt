@@ -2,9 +2,11 @@
 
 ;;; only self evaluating things are numbers and strings
 (define (self-evaluating? exp)
-  (cond ((number? exp) true)
-        ((string? exp) true)
-        (else false)))
+  (cond
+    ((null? exp) true)
+    ((number? exp) true)
+    ((string? exp) true)
+    (else false)))
 
 (define (analyze-self-evaluating exp)
   (lambda (env succeed fail) (succeed exp fail)))
@@ -127,7 +129,8 @@
 (define (if-consequent exp) (caddr exp))
 (define (if-alternative exp)
   (if (not (null? (cdddr exp)))
-      (cadddr exp)))
+      (cadddr exp)
+      nil))
 
 (define (make-if predicate consequent alternative)
   (list 'if predicate consequent alternative))
@@ -247,16 +250,19 @@
        fail)))
 
 (define primitive-procedures
-  (list (list 'car car)
-        (list 'cdr cdr)
-        (list 'cons cons)
-        (list 'null? null?)
-        (list 'eq? eq?)
-        (list '+ +)
-        (list '* *)
-        (list '= =)
-        (list '- -)
-        (list 'list list)))
+  (list
+   (list 'even? even?)
+   (list 'not not)
+   (list 'car car)
+   (list 'cdr cdr)
+   (list 'cons cons)
+   (list 'null? null?)
+   (list 'eq? eq?)
+   (list '+ +)
+   (list '* *)
+   (list '= =)
+   (list '- -)
+   (list 'list list)))
 
 (define (primitive-procedure-names)
   (map car primitive-procedures))
@@ -383,12 +389,30 @@
       (display object)))
 
 (define (driver-loop)
-  (prompt-for-input input-prompt)
-  (let ((input (read)))
-    (let ((output (eval input the-global-environment)))
-      (announce-output output-prompt)
-      (user-print output)))
-  (driver-loop))
+  (define (internal-loop try-again)
+    (prompt-for-input input-prompt)
+    (let ((input (read)))
+      (if (eq? input 'try-again)
+          (try-again)
+          (begin
+            (newline)
+            (display ";;; Starting a new problem")
+            (ambeval
+             input
+             the-global-environment
+             (lambda (val next-alternative)
+               (announce-output output-prompt)
+               (user-print val)
+               (internal-loop next-alternative))
+             (lambda ()
+               (announce-output ";;; There are no more values of")
+               (user-print input)
+               (driver-loop)))))))
+  (internal-loop
+   (lambda ()
+     (newline)
+     (display ";;; There is no current problem")
+     (driver-loop))))
 
 (define (setup-environment)
   (let ((initial-env
